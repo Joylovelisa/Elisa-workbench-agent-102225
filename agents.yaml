@@ -1,99 +1,417 @@
 agents:
-  - name: Summarizer
-    description: Summarize dataset entries into a concise executive overview.
-    provider: openai
-    model: gpt-4o-mini
+  - name: Data Profiler
+    description: Generates a comprehensive profile of the dataset, including column statistics, types, and missing values.
     system_prompt: |
-      You are a helpful data analyst. Provide concise, accurate summaries.
+      You are an expert data analyst. Your task is to provide a detailed data profile. Analyze the columns, data types, and missing values. Output a structured JSON object.
     user_prompt: |
-      Summarize the following dataset. Focus on key entities, themes, and any risk-related concepts.
-      Dataset preview (first 10 rows):
+      Analyze the following dataset and provide a detailed data profile. For each column, identify its data type (e.g., categorical, numerical, text), the percentage of missing values, the number of unique values, and for numerical columns, provide basic statistics (mean, std, min, max).
+      Return a valid JSON of the form:
+      {{
+        "profile": [
+          {{"column": str, "dataType": str, "missingPercentage": float, "uniqueValues": int, "statistics": {{"mean": float, "std": float, "min": float, "max": float}} or null}}
+        ]
+      }}
+      Dataset preview:
+      {dataset_preview}
+    params:
+      temperature: 0.1
+      max_tokens: 4096
+      top_p: 1.0
+      force_json: true
+  - name: Schema Recommender
+    description: Suggests an optimal data schema including data types and potential constraints.
+    system_prompt: |
+      You are a database architect. Based on a data sample, recommend a robust schema.
+    user_prompt: |
+      Based on the dataset preview, recommend an ideal schema. For each column, suggest a strict data type (e.g., INTEGER, VARCHAR(255), DATETIME, BOOLEAN, FLOAT) and any potential constraints like 'NOT NULL' or 'UNIQUE'.
+      Return valid JSON of the form:
+      {{
+        "schema": [
+          {{"column": str, "recommendedType": str, "constraints": [str]}}
+        ]
+      }}
+      Dataset preview:
       {dataset_preview}
     params:
       temperature: 0.2
-      max_tokens: 800
+      max_tokens: 2048
       top_p: 1.0
-      force_json: false
-
-  - name: Keyword Extractor
-    description: Extract normalized keywords across records, counting frequency.
-    provider: gemini
-    model: gemini-1.5-flash
+      force_json: true
+  - name: Data Quality Assessor
+    description: Scores the dataset's quality and identifies issues like duplicates, inconsistencies, and outliers.
     system_prompt: |
-      You are an NLP assistant. Return high-quality, deduplicated keywords with counts.
+      You are a data quality analyst. Assess the provided dataset for common quality issues and provide a summary report in JSON format.
     user_prompt: |
-      Extract normalized keywords with frequency from the dataset. Return a JSON with:
-      {
-        "keywords": [{"keyword": "string", "count": 0}]
-      }
-      Use the first 200 records for performance. If no keywords found, return an empty array.
+      Assess the quality of this dataset. Identify the number of duplicate rows, columns with high cardinality, columns with mixed data types, and potential outliers. Provide an overall quality score from 0 to 100 and a brief rationale.
+      Return valid JSON of the form:
+      {{
+        "qualityReport": {{
+          "overallScore": int,
+          "duplicateRows": int,
+          "highCardinalityColumns": [str],
+          "outlierConcerns": [str],
+          "rationale": str
+        }}
+      }}
       Dataset sample:
       {dataset_sample_200}
     params:
-      temperature: 0.1
-      max_tokens: 2048
-      top_p: 0.9
-      force_json: true
-
-  - name: Risk Classifier
-    description: Classify each record into Low, Medium, High risk, with rationale.
-    provider: grok
-    model: grok-beta
-    system_prompt: |
-      You are Grok, an intelligent classifier of regulatory risk.
-      Classify records by the potential for serious injury prior to risk controls.
-    user_prompt: |
-      Classify each record (up to 50) as Low/Medium/High risk with 1–2 sentence rationale.
-      Return valid JSON of the form:
-      {
-        "classifications": [
-          {"index": 0, "entity": "name", "risk": "Low", "rationale": "text"}
-        ]
-      }
-      Data:
-      {dataset_first_50}
-    params:
       temperature: 0.3
-      max_tokens: 4096
-      top_p: 0.95
+      max_tokens: 3072
+      top_p: 1.0
       force_json: true
-
-  - name: Entity Analyzer
-    description: Analyze entities and extract structured information.
-    provider: openai
-    model: gpt-4o
+  - name: Outlier Detection Analyst
+    description: Identifies and provides context for potential outliers in numerical columns.
     system_prompt: |
-      You are an expert in entity analysis and information extraction.
+      You are a statistical analyst specializing in outlier detection. Identify outliers using the Interquartile Range (IQR) method and explain their potential significance.
     user_prompt: |
-      Analyze the following dataset and extract key entities with their attributes.
-      Provide a structured JSON response with entity types, frequencies, and relationships.
-      Dataset:
+      Analyze the numerical columns in the dataset to identify outliers. For each column with outliers, list the row indices and values of the outliers.
+      Return valid JSON of the form:
+      {{
+        "outliers": [
+          {{"column": str, "identifiedOutliers": [{{"index": int, "value": float}}]}}
+        ]
+      }}
+      Full dataset:
+      {full_dataset_json}
+    params:
+      temperature: 0.2
+      max_tokens: 4096
+      top_p: 1.0
+      force_json: true
+  - name: Data Cleaning Recommender
+    description: Suggests concrete steps and code snippets (Python/Pandas) to clean the data.
+    system_prompt: |
+      You are a data engineer providing actionable recommendations for data cleaning.
+    user_prompt: |
+      Based on the dataset preview, suggest a series of data cleaning steps. For each step, provide a brief description and a corresponding Python/Pandas code snippet. Cover topics like handling missing values, correcting data types, and removing duplicates.
+      Return a JSON object with a list of cleaning steps.
+      {{
+        "cleaning_steps": [
+          {{"step": str, "description": str, "pandas_code": str}}
+        ]
+      }}
+      Dataset preview:
       {dataset_preview}
     params:
-      temperature: 0.3
-      max_tokens: 2000
-      top_p: 0.95
+      temperature: 0.4
+      max_tokens: 3072
+      top_p: 1.0
       force_json: true
-
-  - name: Data Quality Checker
-    description: Check data quality and identify issues.
-    provider: gemini
-    model: gemini-1.5-pro
+  - name: Feature Engineering Assistant
+    description: Proposes new, valuable features that can be created from existing columns.
     system_prompt: |
-      You are a data quality expert. Identify issues, inconsistencies, and suggest improvements.
+      You are a data scientist specializing in feature engineering. Your goal is to suggest new features that could improve model performance.
     user_prompt: |
-      Review this dataset and provide a data quality report including:
-      - Missing values
-      - Inconsistencies
-      - Outliers
-      - Recommendations
-      
-      Dataset columns: {columns}
-      Row count: {row_count}
-      Sample data:
+      Examine the columns in the dataset and suggest 3-5 new features that could be engineered. For each suggested feature, provide a name, a rationale for its potential value, and the logic or pseudo-code to create it.
+      Return a JSON object with a list of feature suggestions.
+      {{
+        "feature_suggestions": [
+          {{"new_feature_name": str, "rationale": str, "logic": str}}
+        ]
+      }}
+      Columns: {columns}
+      Dataset preview:
+      {dataset_preview}
+    params:
+      temperature: 0.6
+      max_tokens: 2048
+      top_p: 1.0
+      force_json: true
+  - name: Missing Value Imputer
+    description: Recommends and explains the best strategies for imputing missing values in the dataset.
+    system_prompt: |
+      You are a data scientist providing expert advice on handling missing data.
+    user_prompt: |
+      Analyze the columns with missing values in the dataset. For each column, recommend the best imputation strategy (e.g., mean, median, mode, constant, or a predictive model) and provide a brief justification for your choice.
+      Return a JSON object with imputation recommendations.
+      {{
+        "imputation_plan": [
+          {{"column": str, "missing_percentage": float, "strategy": str, "justification": str}}
+        ]
+      }}
+      Full dataset for analysis:
+      {full_dataset_json}
+    params:
+      temperature: 0.3
+      max_tokens: 3072
+      top_p: 1.0
+      force_json: true
+  - name: Text Data Normalizer
+    description: Provides a plan to normalize text columns, including steps like lowercasing, stop-word removal, and lemmatization.
+    system_prompt: You are an NLP specialist. Create a text normalization plan.
+    user_prompt: |
+      Analyze the text columns in the dataset. Propose a normalization pipeline. Steps could include lowercasing, removing punctuation, removing stop words, and applying stemming or lemmatization.
+      Return a JSON object with the normalization plan.
+      {{
+        "normalization_plan": {{
+          "target_columns": [str],
+          "pipeline": [
+            {{"step": str, "description": str}}
+          ]
+        }}
+      }}
+      Dataset preview:
       {dataset_preview}
     params:
       temperature: 0.2
-      max_tokens: 1500
-      top_p: 0.9
+      max_tokens: 2048
+      force_json: true
+  - name: Correlation Analyst
+    description: Identifies and explains significant correlations between numerical columns.
+    system_prompt: |
+      You are a statistician. Your task is to find and interpret correlations in the data.
+    user_prompt: |
+      Calculate the pairwise correlation for all numerical columns in the dataset. Identify pairs with a correlation coefficient greater than 0.7 (positive) or less than -0.7 (negative). For each significant pair, provide an interpretation.
+      Return a JSON object describing the correlations.
+      {{
+        "significant_correlations": [
+          {{"column_1": str, "column_2": str, "correlation": float, "interpretation": str}}
+        ]
+      }}
+      Full dataset for analysis:
+      {full_dataset_json}
+    params:
+      temperature: 0.1
+      max_tokens: 4096
+      top_p: 1.0
+      force_json: true
+  - name: Clustering Identifier
+    description: Suggests the optimal number of clusters (K) and provides a profile for each cluster.
+    system_prompt: |
+      You are a machine learning expert specializing in unsupervised learning. Analyze the data to find meaningful clusters.
+    user_prompt: |
+      Perform a cluster analysis on the dataset. Suggest an optimal number of clusters (K). For each cluster, provide a descriptive persona or name and list its key characteristics based on the data.
+      Return a JSON object with the cluster analysis.
+      {{
+        "cluster_analysis": {{
+          "optimal_k": int,
+          "clusters": [
+            {{"cluster_id": int, "persona": str, "key_characteristics": [str], "size_percentage": float}}
+          ]
+        }}
+      }}
+      Dataset sample:
+      {dataset_sample_200}
+    params:
+      temperature: 0.5
+      max_tokens: 4096
+      top_p: 1.0
+      force_json: true
+  - name: Sentiment Analysis Agent
+    description: Performs sentiment analysis on a specified text column and aggregates the results.
+    system_prompt: |
+      You are an NLP model trained for sentiment analysis. Classify text as Positive, Negative, or Neutral.
+    user_prompt: |
+      Perform sentiment analysis on the 'context' column of the dataset. Provide the overall sentiment distribution (percentage of Positive, Negative, and Neutral).
+      Return a valid JSON object with the sentiment breakdown.
+      {{
+        "sentiment_analysis": {{
+          "target_column": "context",
+          "distribution": {{
+            "positive_percentage": float,
+            "negative_percentage": float,
+            "neutral_percentage": float
+          }}
+        }}
+      }}
+      Dataset sample (up to 50 records):
+      {dataset_first_50}
+    params:
+      temperature: 0.3
+      max_tokens: 2048
+      top_p: 1.0
+      force_json: true
+  - name: Topic Modeling Agent
+    description: Extracts latent topics from text data and provides keywords for each topic.
+    system_prompt: |
+      You are an expert in topic modeling. Identify the main themes in the provided text data.
+    user_prompt: |
+      Analyze the text from the 'context' and 'title' columns. Identify 4-6 main topics present in the data. For each topic, provide a short descriptive name and a list of the top 5 keywords.
+      Return a JSON object with the identified topics.
+      {{
+        "topics": [
+          {{"topic_name": str, "keywords": [str]}}
+        ]
+      }}
+      Dataset sample:
+      {dataset_sample_200}
+    params:
+      temperature: 0.4
+      max_tokens: 3072
+      top_p: 1.0
+      force_json: true
+  - name: Key Driver Analyst
+    description: Identifies the most influential variables for a specified target variable.
+    system_prompt: |
+      You are a data scientist identifying key drivers in a dataset.
+    user_prompt: |
+      Assuming the first column is the target variable, identify the top 3-5 other columns that are the strongest predictors or drivers for it. For each driver, explain the nature of its influence.
+      Return a JSON object listing the key drivers.
+      {{
+        "key_drivers_analysis": {{
+          "target_variable": "{columns[0]}",
+          "drivers": [
+            {{"column": str, "influence_score": float, "explanation": str}}
+          ]
+        }}
+      }}
+      Dataset sample:
+      {dataset_sample_200}
+    params:
+      temperature: 0.3
+      max_tokens: 2048
+      force_json: true
+  - name: Hypothesis Generator
+    description: Generates interesting and testable hypotheses about the data.
+    system_prompt: |
+      You are a research analyst. Your goal is to generate novel, data-driven hypotheses.
+    user_prompt: |
+      Based on the dataset's columns and a sample of the data, generate 5 interesting and testable hypotheses. Each hypothesis should be a clear statement about a potential relationship or pattern in the data.
+      Return a JSON object containing the list of hypotheses.
+      {{
+        "hypotheses": [
+          {{"id": 1, "hypothesis": str}},
+          {{"id": 2, "hypothesis": str}},
+          {{"id": 3, "hypothesis": str}},
+          {{"id": 4, "hypothesis": str}},
+          {{"id": 5, "hypothesis": str}}
+        ]
+      }}
+      Columns: {columns}
+      Dataset preview:
+      {dataset_preview}
+    params:
+      temperature: 0.7
+      max_tokens: 2048
+      force_json: true
+  - name: Chart Recommender
+    description: Recommends the most effective chart types to visualize different aspects of the data.
+    system_prompt: |
+      You are a data visualization expert. Recommend the best charts to convey insights from the data.
+    user_prompt: |
+      Based on the dataset's columns, recommend 5 different charts to visualize the data effectively. For each recommendation, specify the chart type (e.g., bar, line, scatter, histogram), the column(s) to be plotted, and the insight it would reveal.
+      Return a JSON object with chart recommendations.
+      {{
+        "chart_recommendations": [
+          {{"chart_type": str, "columns": [str], "insight": str}}
+        ]
+      }}
+      Columns: {columns}
+    params:
+      temperature: 0.4
+      max_tokens: 2048
+      top_p: 1.0
+      force_json: true
+  - name: Vega-Lite Spec Generator
+    description: Creates a Vega-Lite JSON specification for a requested chart.
+    system_prompt: |
+      You are a Vega-Lite expert. You generate valid Vega-Lite JSON specifications for data visualizations. Do not include the data itself in the spec; use the "url" property and set it to "data.csv".
+    user_prompt: |
+      Generate a Vega-Lite JSON specification for a bar chart showing the count of entries for the 'entity' column. The spec should be a complete JSON object.
+      Dataset columns: {columns}
+    params:
+      temperature: 0.1
+      max_tokens: 2048
+      top_p: 1.0
+      force_json: true
+  - name: Plotly Code Generator
+    description: Generates Python code using Plotly Express to create a specified visualization.
+    system_prompt: |
+      You are a Python programming assistant specializing in data visualization with Plotly Express. You only write code.
+    user_prompt: |
+      Write a Python code snippet using Plotly Express to create an interactive scatter plot. Use the first numerical column for the x-axis and the second numerical column for the y-axis. Assume the data is in a pandas DataFrame named `df`.
+      Dataset columns: {columns}
+    params:
+      temperature: 0.1
+      max_tokens: 2048
+      top_p: 1.0
       force_json: false
+  - name: Seaborn Code Generator
+    description: Generates Python code using Seaborn and Matplotlib for statistical visualizations.
+    system_prompt: |
+      You are a Python programming assistant specializing in data visualization with Seaborn. You only write code.
+    user_prompt: |
+      Write a Python code snippet using Seaborn to create a histogram for the first numerical column in the dataset. Add a kernel density estimate (KDE) line. Assume the data is in a pandas DataFrame named `df`.
+      Dataset columns: {columns}
+    params:
+      temperature: 0.1
+      max_tokens: 2048
+      top_p: 1.0
+      force_json: false
+  - name: Dashboard Layout Suggester
+    description: Recommends a layout for a business intelligence dashboard.
+    system_prompt: |
+      You are a BI dashboard designer. Create a logical and insightful layout for a dashboard.
+    user_prompt: |
+      Suggest a 2x2 grid layout for a dashboard based on this dataset. For each of the 4 cells, specify the chart type, the data to be used, and the key question it answers.
+      Return a JSON object describing the dashboard layout.
+      {{
+        "dashboard_layout": [
+          {{"position": "Top-Left", "chart": str, "metric": str, "question": str}},
+          {{"position": "Top-Right", "chart": str, "metric": str, "question": str}},
+          {{"position": "Bottom-Left", "chart": str, "metric": str, "question": str}},
+          {{"position": "Bottom-Right", "chart": str, "metric": str, "question": str}}
+        ]
+      }}
+      Columns: {columns}
+    params:
+      temperature: 0.5
+      max_tokens: 3072
+      force_json: true
+  - name: Predictive Model Scaffolder
+    description: Suggests a simple predictive model and generates scikit-learn pipeline code.
+    system_prompt: |
+      You are a machine learning engineer who scaffolds simple, effective models.
+    user_prompt: |
+      I want to predict the 'Documentation Level' column. Based on the dataset, recommend a simple classification model (e.g., Logistic Regression, RandomForestClassifier) and generate a Python scikit-learn pipeline to preprocess the data and train the model.
+      Return a JSON object with the model choice and code.
+      {{
+        "model_recommendation": {{
+          "target": "Documentation Level",
+          "model_name": str,
+          "rationale": str,
+          "scikit_learn_pipeline_code": str
+        }}
+      }}
+      Dataset preview:
+      {dataset_preview}
+    params:
+      temperature: 0.2
+      max_tokens: 4096
+      force_json: true
+  - name: Natural Language Query Agent
+    description: Translates a natural language question into a structured data query (e.g., Pandas).
+    system_prompt: |
+      You are an AI that converts natural language questions into Python Pandas code to query a DataFrame named `df`.
+    user_prompt: |
+      Translate this question into a single line of Python Pandas code: "Show me all the entries where the entity is 'Enhanced Documentation Level' and the keywords include 'SDS'."
+      The DataFrame `df` has columns: {columns}.
+    params:
+      temperature: 0.1
+      max_tokens: 1024
+      force_json: false
+  - name: Anomaly Detection Agent
+    description: Identifies unusual patterns or anomalies in the dataset using statistical methods.
+    system_prompt: |
+      You are an anomaly detection specialist. Find data points that deviate significantly from the norm.
+    user_prompt: |
+      Analyze the dataset to find records that are anomalous or unusual compared to the others. Describe the top 3 most anomalous records and explain why they are considered anomalies.
+      Return a JSON object detailing the anomalies.
+      {{
+        "anomalies": [
+          {{"index": int, "description": str, "reasoning": str}}
+        ]
+      }}
+      Dataset sample:
+      {dataset_sample_200}
+    params:
+      temperature: 0.4
+      max_tokens: 3072
+      force_json: true
+  - name: Causal Inference Suggester
+    description: Suggests potential causal relationships to investigate and how one might test them.
+    system_prompt: |
+      You are a research scientist specializing in causal inference.
+    user_prompt: |
+      Based on the dataset columns, suggest two potential causal relationships that might be worth investigating. For each, state the hypothesis clearly
