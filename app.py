@@ -664,7 +664,8 @@ def render_provider_keys():
     
     for idx, (provider, config) in enumerate(PROVIDERS.items()):
         with cols[idx]:
-            env_present = bool(st.session_state.keys.get(provider))
+            # FIX: Use dictionary-style access for session_state to avoid attribute errors.
+            env_present = bool(st.session_state['keys'].get(provider))
             st.markdown(provider_badge(provider, env_present))
             
             if not env_present:
@@ -675,7 +676,8 @@ def render_provider_keys():
                     help=f"Enter your {provider.upper()} API key"
                 )
                 if key:
-                    st.session_state.keys[provider] = key
+                    # FIX: Use dictionary-style access to update the nested dictionary.
+                    st.session_state['keys'][provider] = key
                     st.session_state.connected[provider] = True
                     st.toast(f"✅ {provider.upper()} connected!", icon="🔐")
                     st.rerun()
@@ -1041,7 +1043,8 @@ def render_run_tab():
                 model = agent["model"]
                 
                 # Check API key
-                api_key = st.session_state.keys.get(provider)
+                # FIX: Use dictionary-style access for robustness.
+                api_key = st.session_state['keys'].get(provider)
                 if not api_key:
                     st.error(f"❌ {agent['name']}: Missing {provider.upper()} API key")
                     st.session_state.results.append({
@@ -1437,4 +1440,4 @@ def main():
         render_about_tab()
 
 if __name__ == "__main__":
-    main()
+    main()```
