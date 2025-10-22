@@ -1,0 +1,99 @@
+agents:
+  - name: Summarizer
+    description: Summarize dataset entries into a concise executive overview.
+    provider: openai
+    model: gpt-4o-mini
+    system_prompt: |
+      You are a helpful data analyst. Provide concise, accurate summaries.
+    user_prompt: |
+      Summarize the following dataset. Focus on key entities, themes, and any risk-related concepts.
+      Dataset preview (first 10 rows):
+      {dataset_preview}
+    params:
+      temperature: 0.2
+      max_tokens: 800
+      top_p: 1.0
+      force_json: false
+
+  - name: Keyword Extractor
+    description: Extract normalized keywords across records, counting frequency.
+    provider: gemini
+    model: gemini-1.5-flash
+    system_prompt: |
+      You are an NLP assistant. Return high-quality, deduplicated keywords with counts.
+    user_prompt: |
+      Extract normalized keywords with frequency from the dataset. Return a JSON with:
+      {
+        "keywords": [{"keyword": "string", "count": 0}]
+      }
+      Use the first 200 records for performance. If no keywords found, return an empty array.
+      Dataset sample:
+      {dataset_sample_200}
+    params:
+      temperature: 0.1
+      max_tokens: 2048
+      top_p: 0.9
+      force_json: true
+
+  - name: Risk Classifier
+    description: Classify each record into Low, Medium, High risk, with rationale.
+    provider: grok
+    model: grok-beta
+    system_prompt: |
+      You are Grok, an intelligent classifier of regulatory risk.
+      Classify records by the potential for serious injury prior to risk controls.
+    user_prompt: |
+      Classify each record (up to 50) as Low/Medium/High risk with 1–2 sentence rationale.
+      Return valid JSON of the form:
+      {
+        "classifications": [
+          {"index": 0, "entity": "name", "risk": "Low", "rationale": "text"}
+        ]
+      }
+      Data:
+      {dataset_first_50}
+    params:
+      temperature: 0.3
+      max_tokens: 4096
+      top_p: 0.95
+      force_json: true
+
+  - name: Entity Analyzer
+    description: Analyze entities and extract structured information.
+    provider: openai
+    model: gpt-4o
+    system_prompt: |
+      You are an expert in entity analysis and information extraction.
+    user_prompt: |
+      Analyze the following dataset and extract key entities with their attributes.
+      Provide a structured JSON response with entity types, frequencies, and relationships.
+      Dataset:
+      {dataset_preview}
+    params:
+      temperature: 0.3
+      max_tokens: 2000
+      top_p: 0.95
+      force_json: true
+
+  - name: Data Quality Checker
+    description: Check data quality and identify issues.
+    provider: gemini
+    model: gemini-1.5-pro
+    system_prompt: |
+      You are a data quality expert. Identify issues, inconsistencies, and suggest improvements.
+    user_prompt: |
+      Review this dataset and provide a data quality report including:
+      - Missing values
+      - Inconsistencies
+      - Outliers
+      - Recommendations
+      
+      Dataset columns: {columns}
+      Row count: {row_count}
+      Sample data:
+      {dataset_preview}
+    params:
+      temperature: 0.2
+      max_tokens: 1500
+      top_p: 0.9
+      force_json: false
