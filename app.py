@@ -173,23 +173,21 @@ DEFAULT_SAMPLE_JSON = [
 PROVIDERS = {
     "openai": {
         "env_key": "OPENAI_API_KEY",
-        "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"]
+        "models": ["gpt-4o-mini", "gpt-4.1-mini", "gpt-5-nano", "gpt-5-mini"]
     },
     "gemini": {
-        "env_key": "GOOGLE_API_KEY",
-        "models": ["gemini-2.0-flash-exp", "gemini-1.5-pro", "gemini-1.5-flash"]
+        "env_key": "GEMINI_API_KEY",
+        "models": ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"]
     },
     "grok": {
-        "env_key": "XAI_API_KEY",
-        "models": ["grok-beta", "grok-2-latest"]
+        "env_key": "GROK_API_KEY",
+        "models": ["grok-4-fast-reasoning", "grok-3-mini"]
     }
 }
 
 DEFAULT_AGENTS_YAML = """agents:
   - name: Summarizer
     description: Summarize dataset entries into a concise executive overview.
-    provider: openai
-    model: gpt-4o-mini
     system_prompt: |
       You are a helpful data analyst. Provide concise, accurate summaries.
     user_prompt: |
@@ -204,8 +202,6 @@ DEFAULT_AGENTS_YAML = """agents:
 
   - name: Keyword Extractor
     description: Extract normalized keywords across records, counting frequency.
-    provider: gemini
-    model: gemini-1.5-flash
     system_prompt: |
       You are an NLP assistant. Return high-quality, deduplicated keywords with counts.
     user_prompt: |
@@ -224,8 +220,6 @@ DEFAULT_AGENTS_YAML = """agents:
 
   - name: Risk Classifier
     description: Classify each record into Low, Medium, High risk, with rationale.
-    provider: grok
-    model: grok-beta
     system_prompt: |
       You are Grok, an intelligent classifier of regulatory risk.
       Classify records by the potential for serious injury prior to risk controls.
