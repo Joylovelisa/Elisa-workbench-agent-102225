@@ -4,3 +4,6 @@ google-generativeai
 openai
 pandas
 xai_sdk
+numpy
+PyMuPDF
+plotly
