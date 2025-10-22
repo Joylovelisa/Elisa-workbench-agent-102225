@@ -1440,4 +1440,4 @@ def main():
         render_about_tab()
 
 if __name__ == "__main__":
-    main()```
+    main()
