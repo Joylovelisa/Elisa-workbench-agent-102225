@@ -1,0 +1,6 @@
+streamlit
+PyYAML
+google-generativeai
+openai
+pandas
+xai_sdk
